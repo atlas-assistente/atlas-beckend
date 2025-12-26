@@ -1,6 +1,30 @@
-<input id="msg">
-<button onclick="send()">Enviar</button>
-<pre id="log"></pre>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Atlas • Simulador</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body class="atlas-app">
+
+<div class="atlas-topbar">
+  <div class="atlas-logo">Atlas Simulador</div>
+</div>
+
+<div class="atlas-content">
+
+  <div class="atlas-card atlas-chat-card">
+
+    <div id="log" class="atlas-chat-log"></div>
+
+    <div class="atlas-chat-input">
+      <input id="msg" class="atlas-input" placeholder="Digite como se fosse WhatsApp">
+      <button class="atlas-btn" onclick="send()">Enviar</button>
+    </div>
+
+  </div>
+
+</div>
 
 <script src="admin.js"></script>
 <script>
@@ -11,11 +35,16 @@ fetch(API+"/simulator/whatsapp",{
   "Content-Type":"application/json",
   "X-ADMIN-KEY":localStorage.getItem("atlas_admin")
  },
- body: JSON.stringify({ from:"test", message:msg.value })
+ body: JSON.stringify({ from:"559999999999", message:msg.value })
 })
 .then(r=>r.json())
 .then(d=>{
- log.textContent += "\n"+d.reply;
+ log.innerHTML += `<div><b>Você:</b> ${msg.value}</div>`;
+ log.innerHTML += `<div><b>Atlas:</b> ${d.reply}</div>`;
+ msg.value="";
 });
 }
 </script>
+
+</body>
+</html>

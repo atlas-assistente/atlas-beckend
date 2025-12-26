@@ -13,6 +13,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+console.log("SERVER.JS REAL EXECUTANDO");
+
+
 // =======================
 // ADMIN AUTH
 // =======================

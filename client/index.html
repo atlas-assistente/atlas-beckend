@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Atlas • Login</title>
+<style>
+body{background:#050b16;color:#fff;font-family:Arial}
+.box{max-width:360px;margin:120px auto;background:#0b1b33;padding:24px;border-radius:10px}
+input,button{width:100%;padding:12px;margin-top:10px;border-radius:6px;border:none}
+button{background:#1e88ff;color:#fff;font-weight:bold}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h3>Entrar no Atlas</h3>
+  <input id="email" placeholder="Seu e-mail">
+  <button id="send">Enviar código</button>
+
+  <input id="code" placeholder="Código" style="display:none">
+  <button id="login" style="display:none">Entrar</button>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+const API="https://atlas-beckend.onrender.com/api";
+
+send.onclick=async()=>{
+ const r=await fetch(API+"/auth/request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email.value})});
+ const d=await r.json();
+ if(!r.ok)return msg.innerText=d.error;
+ msg.innerText="Código enviado";
+ code.style.display="block";
+ login.style.display="block";
+};
+
+login.onclick=async()=>{
+ const r=await fetch(API+"/auth/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email.value,code:code.value})});
+ const d=await r.json();
+ if(!r.ok)return msg.innerText=d.error;
+ localStorage.setItem("atlas_token",d.token);
+ msg.innerText="Logado";
+};
+</script>
+
+</body>
+</html>

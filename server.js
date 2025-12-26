@@ -5,7 +5,12 @@ import { parseMessage } from "./parser.js";
 import { startScheduler } from "./scheduler.js";
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  allowedHeaders: ["Content-Type", "X-ADMIN-KEY"],
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"]
+}));
+
 app.use(express.json());
 
 function mustAdmin(req, res) {

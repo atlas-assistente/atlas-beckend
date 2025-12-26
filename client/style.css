@@ -1,0 +1,51 @@
+body {
+  background: linear-gradient(180deg,#050b16,#071a33);
+  color: #fff;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.atlas-login {
+  max-width: 420px;
+  margin: 120px auto;
+  background: #0b1b33;
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 0 40px rgba(0,0,0,.6);
+}
+
+.atlas-login h2 {
+  margin-bottom: 18px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.atlas-login input {
+  width: 100%;
+  padding: 12px;
+  background: #061225;
+  border: 1px solid #1c3c6b;
+  color: #fff;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.atlas-login button {
+  width: 100%;
+  padding: 12px;
+  background: #1e88ff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.atlas-login button:hover {
+  background:#3aa0ff;
+}
+
+.atlas-login .msg {
+  text-align: center;
+  margin-top: 12px;
+  color: #8cbcff;
+}

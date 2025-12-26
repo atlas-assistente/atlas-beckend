@@ -54,7 +54,16 @@ async function autoMigrate() {
     );
 
     CREATE TABLE IF NOT EXISTS messages (
-      CREATE TABLE IF NOT EXISTS login_codes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      channel TEXT,
+      from_phone TEXT,
+      text TEXT,
+      parsed JSONB,
+      reply TEXT,
+      criado_em TIMESTAMP DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS login_codes (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       code TEXT,
@@ -69,19 +78,11 @@ async function autoMigrate() {
       criado_em TIMESTAMP DEFAULT now(),
       expires_at TIMESTAMP
     );
-
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      channel TEXT,
-      from_phone TEXT,
-      text TEXT,
-      parsed JSONB,
-      reply TEXT,
-      criado_em TIMESTAMP DEFAULT now()
-    );
   `);
 
   console.log("Atlas DB OK");
 }
+
 
 await autoMigrate();
 startScheduler();

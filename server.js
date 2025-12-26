@@ -243,77 +243,17 @@ app.post("/simulator/whatsapp", async (req, res) => {
   const { from, message } = req.body || {};
   const parsed = parseMessage(message || "");
 
-  // Buscar usuário pelo telefone
-  const userRes = await pool.query(
-    `SELECT u.id, u.email
-     FROM whatsapp_numbers wn
-     JOIN users u ON u.id = wn.user_id
-     WHERE wn.phone = $1
-     LIMIT 1`,
-    [String(from)]
-  );
-
-  if (!userRes.rows.length) {
-    const reply = "Este número não está vinculado a nenhum usuário Atlas.";
-    await pool.query(
-      `INSERT INTO messages (channel, from_phone, text, parsed, reply)
-       VALUES ('simulator', $1, $2, $3, $4)`,
-      [String(from || ""), String(message || ""), JSON.stringify(parsed || {}), reply]
-    );
-    return res.json({ reply });
-  }
-
-  const userId = userRes.rows[0].id;
-  let reply = "Mensagem registrada.";
-
-  // FINANCEIRO
-  if (parsed.tipo === "expense" || parsed.tipo === "income") {
-    await pool.query(
-      `INSERT INTO financial_records (user_id, tipo, valor, descricao, data, vencimento, status)
-       VALUES ($1,$2,$3,$4,$5,$6,'aberto')`,
-      [
-        userId,
-        parsed.tipo,
-        parsed.valor || 0,
-        parsed.descricao,
-        parsed.data,
-        parsed.vencimento
-      ]
-    );
-
-    reply = parsed.tipo === "expense"
-      ? "Despesa registrada."
-      : "Receita registrada.";
-  }
-
-  // EVENTO / AGENDA
-  if (parsed.tipo === "event") {
-    const ev = await pool.query(
-      `INSERT INTO events (user_id, titulo, data, hora)
-       VALUES ($1,$2,$3,$4)
-       RETURNING id`,
-      [userId, parsed.titulo, parsed.data, parsed.hora]
-    );
-
-    if (parsed.data) {
-      await pool.query(
-        `INSERT INTO reminders (event_id, minutos_antes)
-         VALUES ($1, 1440)`,
-        [ev.rows[0].id]
-      );
-    }
-
-    reply = "Evento registrado na agenda.";
-  }
+  // (Por enquanto) só responde; o storage fica registrado em messages.
+  // Depois a gente evolui para criar events/financial_records conforme o parsed.
+  const reply = `OK. Entendi como: ${parsed?.tipo || "unknown"}`;
 
   await pool.query(
-    `INSERT INTO messages (channel, user_id, from_phone, text, parsed, reply)
-     VALUES ('simulator', $1, $2, $3, $4, $5)`,
-    [userId, String(from || ""), String(message || ""), JSON.stringify(parsed || {}), reply]
+    `INSERT INTO messages (channel, from_phone, text, parsed, reply)
+     VALUES ('simulator', $1, $2, $3, $4)`,
+    [String(from || ""), String(message || ""), JSON.stringify(parsed || {}), reply]
   );
 
   res.json({ reply, parsed });
 });
-
 
 app.listen(process.env.PORT || 3000);

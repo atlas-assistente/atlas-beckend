@@ -1,0 +1,21 @@
+<input id="msg">
+<button onclick="send()">Enviar</button>
+<pre id="log"></pre>
+
+<script src="admin.js"></script>
+<script>
+function send(){
+fetch(API+"/simulator/whatsapp",{
+ method:"POST",
+ headers:{
+  "Content-Type":"application/json",
+  "X-ADMIN-KEY":localStorage.getItem("atlas_admin")
+ },
+ body: JSON.stringify({ from:"test", message:msg.value })
+})
+.then(r=>r.json())
+.then(d=>{
+ log.textContent += "\n"+d.reply;
+});
+}
+</script>

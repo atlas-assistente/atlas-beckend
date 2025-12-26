@@ -1,21 +1,313 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Atlas</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Atlas · Console</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="atlas-shell">
+<body class="atlas-body">
+  <div class="atlas-app" id="appRoot">
 
-<div class="atlas-center">
-  <div class="atlas-card">
-    <h1 class="atlas-logo">Atlas</h1>
-    <p class="atlas-sub">Seu assistente financeiro e de agenda</p>
-    <input id="email" class="atlas-input" placeholder="Seu e-mail">
-    <button class="atlas-btn" onclick="login()">Entrar</button>
+    <!-- Topbar -->
+    <header class="atlas-topbar">
+      <div class="atlas-brand">
+        <div class="atlas-mark">A</div>
+        <div class="atlas-brand-text">
+          <div class="atlas-brand-title">Atlas</div>
+          <div class="atlas-brand-sub">Console premium · Agenda, financeiro e automação</div>
+        </div>
+      </div>
+
+      <div class="atlas-top-actions">
+        <div class="atlas-pill" id="envPill">API: <span id="apiHostText">—</span></div>
+        <button class="atlas-btn atlas-btn-ghost" id="btnLogout" title="Sair">Sair</button>
+      </div>
+    </header>
+
+    <!-- Layout -->
+    <div class="atlas-shell">
+      <!-- Sidebar -->
+      <aside class="atlas-sidebar">
+        <nav class="atlas-nav">
+          <a class="atlas-nav-item" href="#/admin" id="navAdmin">
+            <span class="atlas-nav-ic">⌁</span>
+            <span class="atlas-nav-txt">Admin</span>
+            <span class="atlas-nav-hint">Usuários & Planos</span>
+          </a>
+
+          <a class="atlas-nav-item" href="#/app" id="navApp">
+            <span class="atlas-nav-ic">◈</span>
+            <span class="atlas-nav-txt">Painel</span>
+            <span class="atlas-nav-hint">Agenda & Financeiro</span>
+          </a>
+
+          <a class="atlas-nav-item" href="#/chat" id="navChat">
+            <span class="atlas-nav-ic">✦</span>
+            <span class="atlas-nav-txt">Simulador</span>
+            <span class="atlas-nav-hint">WhatsApp (fake)</span>
+          </a>
+        </nav>
+
+        <div class="atlas-sidebar-foot">
+          <div class="atlas-mini">
+            <div class="atlas-mini-k">Sessão</div>
+            <div class="atlas-mini-v" id="sessionLabel">—</div>
+          </div>
+          <div class="atlas-mini">
+            <div class="atlas-mini-k">Status</div>
+            <div class="atlas-mini-v" id="statusLabel">—</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="atlas-main">
+
+        <!-- LOGIN VIEW -->
+        <section class="atlas-view" id="viewLogin">
+          <div class="atlas-hero">
+            <div class="atlas-hero-left">
+              <h1 class="atlas-h1">Bem-vindo ao Atlas</h1>
+              <p class="atlas-p">
+                Controle total, visual premium e automações silenciosas.
+                Faça login como Admin para gerenciar usuários. O simulador existe para testar antes de ligar a API real do WhatsApp.
+              </p>
+
+              <div class="atlas-card atlas-card-lg">
+                <div class="atlas-card-head">
+                  <div class="atlas-card-title">Acesso Admin</div>
+                  <div class="atlas-card-sub">Use sua chave Admin do backend (X-ADMIN-KEY)</div>
+                </div>
+
+                <div class="atlas-form">
+                  <label class="atlas-label">Chave Admin</label>
+                  <input class="atlas-input" id="adminKeyInput" placeholder="Cole sua chave admin aqui" />
+                  <div class="atlas-row">
+                    <button class="atlas-btn atlas-btn-primary" id="btnSaveAdminKey">Entrar</button>
+                    <button class="atlas-btn" id="btnGoAdmin">Ir para Admin</button>
+                  </div>
+                  <div class="atlas-note">
+                    Dica: a chave fica apenas no seu navegador (localStorage). Não compartilhe.
+                  </div>
+                </div>
+              </div>
+
+              <div class="atlas-metrics">
+                <div class="atlas-metric">
+                  <div class="atlas-metric-k">Estética</div>
+                  <div class="atlas-metric-v">Minimalista premium</div>
+                </div>
+                <div class="atlas-metric">
+                  <div class="atlas-metric-k">Base</div>
+                  <div class="atlas-metric-v">GitHub Pages + Render</div>
+                </div>
+                <div class="atlas-metric">
+                  <div class="atlas-metric-k">Canal</div>
+                  <div class="atlas-metric-v">WhatsApp (simulado)</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="atlas-hero-right">
+              <div class="atlas-showcase">
+                <div class="atlas-show-title">Atlas · Command Surface</div>
+                <div class="atlas-show-sub">Uma UI que parece 2050 sem parecer “neon”.</div>
+
+                <div class="atlas-show-grid">
+                  <div class="atlas-glass">
+                    <div class="atlas-glass-k">Agenda</div>
+                    <div class="atlas-glass-v">Lembretes pontuais</div>
+                  </div>
+                  <div class="atlas-glass">
+                    <div class="atlas-glass-k">Financeiro</div>
+                    <div class="atlas-glass-v">Fluxo limpo</div>
+                  </div>
+                  <div class="atlas-glass">
+                    <div class="atlas-glass-k">Admin</div>
+                    <div class="atlas-glass-v">Controle total</div>
+                  </div>
+                  <div class="atlas-glass">
+                    <div class="atlas-glass-k">Simulador</div>
+                    <div class="atlas-glass-v">Testes rápidos</div>
+                  </div>
+                </div>
+
+                <div class="atlas-fineprint">
+                  Atlas é um “cérebro”. O WhatsApp é só o canal.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ADMIN VIEW -->
+        <section class="atlas-view" id="viewAdmin">
+          <div class="atlas-pagehead">
+            <div>
+              <h2 class="atlas-h2">Admin</h2>
+              <div class="atlas-subtle">Gerencie usuários, planos e telefones. Tudo real (banco + API).</div>
+            </div>
+            <div class="atlas-page-actions">
+              <button class="atlas-btn" id="btnRefreshUsers">Atualizar</button>
+              <button class="atlas-btn atlas-btn-primary" id="btnOpenCreateUser">Criar usuário</button>
+            </div>
+          </div>
+
+          <div class="atlas-grid">
+            <div class="atlas-card">
+              <div class="atlas-card-head">
+                <div class="atlas-card-title">Usuários</div>
+                <div class="atlas-card-sub">Lista completa do banco</div>
+              </div>
+
+              <div class="atlas-table-wrap">
+                <table class="atlas-table">
+                  <thead>
+                    <tr>
+                      <th>E-mail</th>
+                      <th>Nome</th>
+                      <th>Plano</th>
+                      <th>Status</th>
+                      <th>Telefone</th>
+                      <th style="width: 260px;">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usersTbody">
+                    <tr><td colspan="6" class="atlas-td-muted">Carregando…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="atlas-card">
+              <div class="atlas-card-head">
+                <div class="atlas-card-title">Criar / Editar</div>
+                <div class="atlas-card-sub">Cadastro manual (sem Kiwify por enquanto)</div>
+              </div>
+
+              <div class="atlas-form">
+                <input type="hidden" id="editUserId" />
+                <label class="atlas-label">E-mail</label>
+                <input class="atlas-input" id="userEmail" placeholder="ex: cliente@email.com"/>
+
+                <label class="atlas-label">Nome</label>
+                <input class="atlas-input" id="userNome" placeholder="ex: João"/>
+
+                <div class="atlas-row">
+                  <div class="atlas-col">
+                    <label class="atlas-label">Plano</label>
+                    <select class="atlas-input" id="userPlano">
+                      <option value="FREE">FREE</option>
+                      <option value="PRO">PRO</option>
+                      <option value="PREMIUM">PREMIUM</option>
+                    </select>
+                  </div>
+                  <div class="atlas-col">
+                    <label class="atlas-label">Status</label>
+                    <select class="atlas-input" id="userStatus">
+                      <option value="active">active</option>
+                      <option value="blocked">blocked</option>
+                      <option value="inactive">inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <label class="atlas-label">Telefone (opcional)</label>
+                <input class="atlas-input" id="userPhone" placeholder="ex: 5548999999999"/>
+
+                <div class="atlas-row">
+                  <button class="atlas-btn atlas-btn-primary" id="btnSaveUser">Salvar</button>
+                  <button class="atlas-btn atlas-btn-ghost" id="btnClearForm">Limpar</button>
+                </div>
+
+                <div class="atlas-note">
+                  Ações do painel admin exigem <strong>X-ADMIN-KEY</strong> configurada no backend.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="atlas-toast" id="toast"></div>
+        </section>
+
+        <!-- APP VIEW -->
+        <section class="atlas-view" id="viewApp">
+          <div class="atlas-pagehead">
+            <div>
+              <h2 class="atlas-h2">Painel</h2>
+              <div class="atlas-subtle">Nesta etapa, o foco é validar o fluxo por chat (simulador) + banco.</div>
+            </div>
+          </div>
+
+          <div class="atlas-grid">
+            <div class="atlas-card">
+              <div class="atlas-card-head">
+                <div class="atlas-card-title">Agenda (próximos)</div>
+                <div class="atlas-card-sub">Aparecerá conforme você registrar via Simulador</div>
+              </div>
+              <div class="atlas-empty">Em breve: lista de eventos do usuário, com filtros.</div>
+            </div>
+
+            <div class="atlas-card">
+              <div class="atlas-card-head">
+                <div class="atlas-card-title">Financeiro (resumo)</div>
+                <div class="atlas-card-sub">Aparecerá conforme você registrar via Simulador</div>
+              </div>
+              <div class="atlas-empty">Em breve: saldo, despesas, receitas, vencimentos.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CHAT VIEW -->
+        <section class="atlas-view" id="viewChat">
+          <div class="atlas-pagehead">
+            <div>
+              <h2 class="atlas-h2">Simulador WhatsApp (Fake)</h2>
+              <div class="atlas-subtle">Aqui você testa o Atlas antes de ligar qualquer API de WhatsApp.</div>
+            </div>
+            <div class="atlas-page-actions">
+              <button class="atlas-btn" id="btnClearChat">Limpar</button>
+            </div>
+          </div>
+
+          <div class="atlas-chat">
+            <div class="atlas-chat-head">
+              <div class="atlas-chat-avatar">AT</div>
+              <div class="atlas-chat-meta">
+                <div class="atlas-chat-name">Atlas</div>
+                <div class="atlas-chat-sub">Simulador de canal · grava no banco</div>
+              </div>
+              <div class="atlas-chat-right">
+                <input class="atlas-input atlas-input-sm" id="chatFrom" placeholder="from: 5548999999999" />
+              </div>
+            </div>
+
+            <div class="atlas-chat-body" id="chatBody">
+              <div class="atlas-chat-bubble atlas-chat-bubble-atlas">
+                Envie uma mensagem para começar. Exemplos:
+                <div class="atlas-chat-ex">
+                  <div>pagar aluguel 1200 dia 05</div>
+                  <div>recebi 4800 salário</div>
+                  <div>médico dia 10 9h</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="atlas-chat-foot">
+              <input class="atlas-input" id="chatMessage" placeholder="Digite como se fosse WhatsApp…" />
+              <button class="atlas-btn atlas-btn-primary" id="btnSendChat">Enviar</button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
   </div>
-</div>
 
-<script src="client.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

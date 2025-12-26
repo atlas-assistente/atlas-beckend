@@ -54,6 +54,22 @@ async function autoMigrate() {
     );
 
     CREATE TABLE IF NOT EXISTS messages (
+      CREATE TABLE IF NOT EXISTS login_codes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      code TEXT,
+      expires_at TIMESTAMP,
+      used BOOLEAN DEFAULT false
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT UNIQUE,
+      criado_em TIMESTAMP DEFAULT now(),
+      expires_at TIMESTAMP
+    );
+
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       channel TEXT,
       from_phone TEXT,

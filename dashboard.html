@@ -1,0 +1,14 @@
+const API = "https://atlas-backend.onrender.com";
+const user = localStorage.getItem("atlas_user");
+
+fetch(API + "/client/data/" + user)
+.then(r=>r.json())
+.then(d=>{
+  d.events.forEach(e=>{
+    agenda.innerHTML += `<li>${e.titulo} - ${e.data}</li>`;
+  });
+
+  d.financial.forEach(f=>{
+    financeiro.innerHTML += `<li>${f.tipo} R$ ${f.valor}</li>`;
+  });
+});

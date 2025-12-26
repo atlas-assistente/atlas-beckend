@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Atlas • Simulador</title>
-<link rel="stylesheet" href="../style.css">
+<title>Atlas Simulador</title>
+<link rel="stylesheet" href="../style (2).css">
 </head>
 <body class="atlas-app">
 
@@ -12,18 +11,13 @@
 </div>
 
 <div class="atlas-content">
-
   <div class="atlas-card atlas-chat-card">
-
     <div id="log" class="atlas-chat-log"></div>
-
     <div class="atlas-chat-input">
-      <input id="msg" class="atlas-input" placeholder="Digite como se fosse WhatsApp">
+      <input id="msg" class="atlas-input" placeholder="Digite como WhatsApp">
       <button class="atlas-btn" onclick="send()">Enviar</button>
     </div>
-
   </div>
-
 </div>
 
 <script src="admin.js"></script>
@@ -45,6 +39,5 @@ fetch(API+"/simulator/whatsapp",{
 });
 }
 </script>
-
 </body>
 </html>

@@ -380,10 +380,6 @@ async function sendChat() {
   }
 }
 
-// init
-(async function init(){
-  await pingApi();
-  route();
 
 async function loadDashboard() {
   try {
@@ -416,5 +412,9 @@ async function loadDashboard() {
   }
 }
 
+// init
+(async function init(){
+  await pingApi();
+  route();
   
 })();

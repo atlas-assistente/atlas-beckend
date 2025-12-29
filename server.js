@@ -169,3 +169,35 @@ app.get("*", (req, res) => {
 });
 
 app.listen(process.env.PORT || 3000);
+
+// =======================
+// DASHBOARD DATA
+// =======================
+
+api.get("/dashboard/agenda", async (req, res) => {
+  if (!mustAdmin(req, res)) return;
+
+  const r = await pool.query(`
+    SELECT id, from_phone, parsed, text, criado_em
+    FROM messages
+    WHERE parsed->>'tipo' IN ('expense','income','event')
+    ORDER BY criado_em DESC
+    LIMIT 50
+  `);
+
+  res.json({ items: r.rows });
+});
+
+api.get("/dashboard/finance", async (req, res) => {
+  if (!mustAdmin(req, res)) return;
+
+  const r = await pool.query(`
+    SELECT
+      SUM(CASE WHEN parsed->>'tipo' = 'income' THEN (parsed->>'valor')::numeric ELSE 0 END) AS income,
+      SUM(CASE WHEN parsed->>'tipo' = 'expense' THEN (parsed->>'valor')::numeric ELSE 0 END) AS expense
+    FROM messages
+  `);
+
+  res.json(r.rows[0]);
+});
+

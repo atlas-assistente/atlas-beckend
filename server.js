@@ -57,11 +57,13 @@ async function autoMigrate() {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       channel TEXT,
       from_phone TEXT,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
       text TEXT,
       parsed JSONB,
       reply TEXT,
       criado_em TIMESTAMP DEFAULT now()
     );
+
 
     CREATE TABLE IF NOT EXISTS login_codes (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -147,11 +149,19 @@ api.post("/simulator/whatsapp", async (req, res) => {
   const parsed = parseMessage(message || "");
   const reply = `Entendido: ${parsed?.tipo || "unknown"}`;
 
-  await pool.query(
-    `INSERT INTO messages (channel,from_phone,text,parsed,reply)
-     VALUES ('simulator',$1,$2,$3,$4)`,
-    [from || "", message || "", JSON.stringify(parsed || {}), reply]
+  const u = await pool.query(
+    "SELECT user_id FROM whatsapp_numbers WHERE phone = $1",
+    [from || ""]
   );
+
+const userId = u.rows[0]?.user_id || null;
+
+  await pool.query(
+    `INSERT INTO messages (channel,from_phone,user_id,text,parsed,reply)
+     VALUES ('simulator',$1,$2,$3,$4,$5)`,
+    [from || "", userId, message || "", JSON.stringify(parsed || {}), reply]
+  );
+
 
   res.json({ reply, parsed });
 });

@@ -1,18 +1,20 @@
 import express from "express";
 import cors from "cors";
-import { pool } from "./db.js";
+import { Pool } from "pg";
 import crypto from "crypto";
-import { fileURLToPath } from "url";
-import path from "path";
+import cron from "node-cron";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Banco
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ====================== MIGRAÇÃO ======================
+// Migração
 async function autoMigrate() {
   await pool.query(`
     CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -88,7 +90,7 @@ async function autoMigrate() {
 
 await autoMigrate();
 
-// ====================== PARSER ======================
+// Parser
 function parseMessage(texto) {
   const t = texto.toLowerCase().trim();
   const valorMatch = t.match(/(\d+[.,]?\d*)/);
@@ -140,9 +142,7 @@ function parseMessage(texto) {
   return { tipo: "unknown", texto };
 }
 
-// ====================== AGENDADOR ======================
-import cron from "node-cron";
-
+// Scheduler
 function startScheduler() {
   cron.schedule("* * * * *", async () => {
     try {
@@ -177,7 +177,7 @@ function startScheduler() {
 
 startScheduler();
 
-// ====================== MIDDLEWARE ADMIN ======================
+// Middleware Admin
 function mustAdmin(req, res, next) {
   const key = req.headers["x-admin-key"];
   const expected = process.env.ADMIN_KEY || "admin123";
@@ -188,7 +188,7 @@ function mustAdmin(req, res, next) {
   }
 }
 
-// ====================== MIDDLEWARE AUTH ======================
+// Middleware Auth
 async function authenticate(req, res, next) {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.status(401).json({ error: "Token requerido" });
@@ -212,13 +212,13 @@ async function authenticate(req, res, next) {
   }
 }
 
-// ====================== API ROTAS ======================
+// API
 const api = express.Router();
 
-// HEALTH
+// Health
 api.get("/health", (req, res) => res.json({ ok: true, time: new Date() }));
 
-// AUTH
+// Auth
 api.post("/auth/request", async (req, res) => {
   try {
     const { email } = req.body;
@@ -293,7 +293,7 @@ api.post("/auth/verify", async (req, res) => {
   }
 });
 
-// USUÁRIO
+// User
 api.get("/user/profile", authenticate, async (req, res) => {
   try {
     res.json({
@@ -313,7 +313,6 @@ api.get("/user/dashboard", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Eventos
     const eventos = await pool.query(
       `SELECT * FROM events 
        WHERE user_id = $1 AND data >= CURRENT_DATE
@@ -322,7 +321,6 @@ api.get("/user/dashboard", authenticate, async (req, res) => {
       [userId]
     );
     
-    // Transações recentes
     const transacoes = await pool.query(
       `SELECT * FROM transacoes 
        WHERE user_id = $1
@@ -331,7 +329,6 @@ api.get("/user/dashboard", authenticate, async (req, res) => {
       [userId]
     );
     
-    // Resumo financeiro
     const resumo = await pool.query(
       `SELECT 
         tipo,
@@ -343,7 +340,6 @@ api.get("/user/dashboard", authenticate, async (req, res) => {
       [userId]
     );
     
-    // Calendário (eventos do mês)
     const hoje = new Date();
     const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
       .toISOString().split('T')[0];
@@ -402,13 +398,12 @@ api.post("/user/transacao", authenticate, async (req, res) => {
   }
 });
 
-// SIMULADOR WHATSAPP
+// Simulador WhatsApp
 api.post("/simulator/whatsapp", mustAdmin, async (req, res) => {
   try {
     const { from, message } = req.body;
     const parsed = parseMessage(message);
     
-    // Encontrar ou criar usuário
     let userResult = await pool.query(
       `SELECT u.id FROM users u
        JOIN whatsapp_numbers wn ON wn.user_id = u.id
@@ -433,14 +428,12 @@ api.post("/simulator/whatsapp", mustAdmin, async (req, res) => {
       userId = userResult.rows[0].id;
     }
     
-    // Salvar mensagem
     await pool.query(
       `INSERT INTO messages (user_id, from_phone, texto, parsed, canal)
        VALUES ($1, $2, $3, $4, 'simulator')`,
       [userId, from, message, JSON.stringify(parsed)]
     );
     
-    // Processar conforme tipo
     let resposta = "✅ Recebido!";
     
     if (parsed.tipo === 'expense' || parsed.tipo === 'income') {
@@ -462,7 +455,6 @@ api.post("/simulator/whatsapp", mustAdmin, async (req, res) => {
       resposta = `✅ Evento agendado para ${parsed.data}`;
     }
     
-    // Salvar resposta
     await pool.query(
       `UPDATE messages SET resposta = $1 
        WHERE user_id = $2 AND from_phone = $3 
@@ -476,7 +468,7 @@ api.post("/simulator/whatsapp", mustAdmin, async (req, res) => {
   }
 });
 
-// ADMIN
+// Admin
 api.get("/admin/users", mustAdmin, async (req, res) => {
   try {
     const users = await pool.query(`
@@ -531,23 +523,28 @@ api.delete("/admin/users/:id", mustAdmin, async (req, res) => {
   }
 });
 
-// MONTAR API
+// Montar API
 app.use("/api", api);
 
-// SERVIR FRONTEND
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+// Rota raiz
+app.get("/", (req, res) => {
+  res.json({
+    message: "Atlas Backend API",
+    version: "1.0.0",
+    endpoints: {
+      health: "/api/health",
+      auth: "/api/auth/request, /api/auth/verify",
+      user: "/api/user/*",
+      admin: "/api/admin/*",
+      simulator: "/api/simulator/whatsapp"
+    },
+    admin_key: process.env.ADMIN_KEY ? "configurada" : "admin123 (padrão)"
+  });
 });
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// INICIAR
+// Iniciar
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Atlas rodando: http://localhost:${PORT}`);
-  console.log(`📞 API: https://atlas-beckend.onrender.com/api`);
+  console.log(`🚀 Atlas API rodando na porta ${PORT}`);
+  console.log(`📞 Endpoint: https://atlas-beckend.onrender.com/api`);
 });

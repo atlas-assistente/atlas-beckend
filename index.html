@@ -1,314 +1,424 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Atlas · Console</title>
-  <link rel="stylesheet" href="style.css"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atlas • Seu Assistente Pessoal</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body class="atlas-body">
-  
-  <div class="atlas-app" id="appRoot">
-
-    <!-- Topbar -->
-    <header class="atlas-topbar">
-      <div class="atlas-brand">
-        <div class="atlas-mark">A</div>
-        <div class="atlas-brand-text">
-          <div class="atlas-brand-title">Atlas</div>
-          <div class="atlas-brand-sub">Console premium · Agenda, financeiro e automação</div>
+<body>
+  <div id="app">
+    <!-- TELA LOGIN -->
+    <div id="loginScreen" class="screen active">
+      <div class="login-container">
+        <div class="login-header">
+          <div class="logo">ATLAS</div>
+          <div class="tagline">Seu cérebro externo</div>
         </div>
-      </div>
-
-      <div class="atlas-top-actions">
-        <div class="atlas-pill" id="envPill">API: <span id="apiHostText">—</span></div>
-        <button class="atlas-btn atlas-btn-ghost" id="btnLogout" title="Sair">Sair</button>
-      </div>
-    </header>
-
-    <!-- Layout -->
-    <div class="atlas-shell">
-      <!-- Sidebar -->
-      <aside class="atlas-sidebar">
-        <nav class="atlas-nav">
-          <a class="atlas-nav-item" href="#/admin" id="navAdmin">
-            <span class="atlas-nav-ic">⌁</span>
-            <span class="atlas-nav-txt">Admin</span>
-            <span class="atlas-nav-hint">Usuários & Planos</span>
-          </a>
-
-          <a class="atlas-nav-item" href="#/app" id="navApp">
-            <span class="atlas-nav-ic">◈</span>
-            <span class="atlas-nav-txt">Painel</span>
-            <span class="atlas-nav-hint">Agenda & Financeiro</span>
-          </a>
-
-          <a class="atlas-nav-item" href="#/chat" id="navChat">
-            <span class="atlas-nav-ic">✦</span>
-            <span class="atlas-nav-txt">Simulador</span>
-            <span class="atlas-nav-hint">WhatsApp (fake)</span>
-          </a>
-        </nav>
-
-        <div class="atlas-sidebar-foot">
-          <div class="atlas-mini">
-            <div class="atlas-mini-k">Sessão</div>
-            <div class="atlas-mini-v" id="sessionLabel">—</div>
+        
+        <div class="login-card">
+          <h2>Entrar no Atlas</h2>
+          <p class="subtitle">Controle sua agenda e finanças pelo WhatsApp</p>
+          
+          <div class="form-group">
+            <label>Seu e-mail</label>
+            <input type="email" id="loginEmail" placeholder="seu@email.com">
           </div>
-          <div class="atlas-mini">
-            <div class="atlas-mini-k">Status</div>
-            <div class="atlas-mini-v" id="statusLabel">—</div>
+          
+          <button id="btnRequestCode" class="btn-primary">Enviar código</button>
+          
+          <div id="codeSection" class="hidden">
+            <div class="form-group">
+              <label>Código de acesso (cheque seu e-mail)</label>
+              <input type="text" id="loginCode" placeholder="123456" maxlength="6">
+            </div>
+            <button id="btnLogin" class="btn-primary">Entrar</button>
+          </div>
+          
+          <div id="loginMessage" class="message"></div>
+          
+          <div class="login-features">
+            <div class="feature">
+              <div class="feature-icon">📅</div>
+              <div class="feature-text">Agenda automática</div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">💰</div>
+              <div class="feature-text">Controle financeiro</div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🤖</div>
+              <div class="feature-text">Via WhatsApp</div>
+            </div>
           </div>
         </div>
-      </aside>
-
-      <!-- Main -->
-      <main class="atlas-main">
-
-        <!-- LOGIN VIEW -->
-        <section class="atlas-view" id="viewLogin">
-          <div class="atlas-hero">
-            <div class="atlas-hero-left">
-              <h1 class="atlas-h1">Bem-vindo ao Atlas</h1>
-              <p class="atlas-p">
-                Controle total, visual premium e automações silenciosas.
-                Faça login como Admin para gerenciar usuários. O simulador existe para testar antes de ligar a API real do WhatsApp.
-              </p>
-
-              <div class="atlas-card atlas-card-lg">
-                <div class="atlas-card-head">
-                  <div class="atlas-card-title">Acesso Admin</div>
-                  <div class="atlas-card-sub">Use sua chave Admin do backend (X-ADMIN-KEY)</div>
-                </div>
-
-                <div class="atlas-form">
-                  <label class="atlas-label">Chave Admin</label>
-                  <input class="atlas-input" id="adminKeyInput" placeholder="Cole sua chave admin aqui" />
-                  <div class="atlas-row">
-                    <button class="atlas-btn atlas-btn-primary" id="btnSaveAdminKey">Entrar</button>
-                    <button class="atlas-btn" id="btnGoAdmin">Ir para Admin</button>
-                  </div>
-                  <div class="atlas-note">
-                    Dica: a chave fica apenas no seu navegador (localStorage). Não compartilhe.
-                  </div>
-                </div>
-              </div>
-
-              <div class="atlas-metrics">
-                <div class="atlas-metric">
-                  <div class="atlas-metric-k">Estética</div>
-                  <div class="atlas-metric-v">Minimalista premium</div>
-                </div>
-                <div class="atlas-metric">
-                  <div class="atlas-metric-k">Base</div>
-                  <div class="atlas-metric-v">GitHub Pages + Render</div>
-                </div>
-                <div class="atlas-metric">
-                  <div class="atlas-metric-k">Canal</div>
-                  <div class="atlas-metric-v">WhatsApp (simulado)</div>
-                </div>
-              </div>
+        
+        <div class="login-footer">
+          <div class="demo-note">
+            <strong>Demo:</strong> Use o simulador no painel admin para testar
+          </div>
+          <div class="api-status">
+            API: <span id="apiStatus">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- DASHBOARD USUÁRIO -->
+    <div id="dashboardScreen" class="screen">
+      <div class="dashboard-header">
+        <div class="header-left">
+          <div class="logo-small">A</div>
+          <div class="user-info">
+            <div id="userName" class="user-name">—</div>
+            <div id="userPlan" class="user-plan">FREE</div>
+          </div>
+        </div>
+        
+        <div class="header-right">
+          <button id="btnLogout" class="btn-logout">Sair</button>
+        </div>
+      </div>
+      
+      <div class="dashboard-content">
+        <!-- BARRA LATERAL -->
+        <div class="sidebar">
+          <nav class="nav-menu">
+            <a href="#dashboard" class="nav-item active" data-view="dashboard">
+              <span class="nav-icon">📊</span>
+              <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="#agenda" class="nav-item" data-view="agenda">
+              <span class="nav-icon">📅</span>
+              <span class="nav-text">Agenda</span>
+            </a>
+            <a href="#financas" class="nav-item" data-view="financas">
+              <span class="nav-icon">💰</span>
+              <span class="nav-text">Finanças</span>
+            </a>
+            <a href="#whatsapp" class="nav-item" data-view="whatsapp">
+              <span class="nav-icon">💬</span>
+              <span class="nav-text">WhatsApp</span>
+            </a>
+          </nav>
+          
+          <div class="sidebar-stats">
+            <div class="stat">
+              <div class="stat-label">Eventos hoje</div>
+              <div id="statEventsToday" class="stat-value">0</div>
             </div>
-
-            <div class="atlas-hero-right">
-              <div class="atlas-showcase">
-                <div class="atlas-show-title">Atlas · Command Surface</div>
-                <div class="atlas-show-sub">Uma UI que parece 2050 sem parecer “neon”.</div>
-
-                <div class="atlas-show-grid">
-                  <div class="atlas-glass">
-                    <div class="atlas-glass-k">Agenda</div>
-                    <div class="atlas-glass-v">Lembretes pontuais</div>
-                  </div>
-                  <div class="atlas-glass">
-                    <div class="atlas-glass-k">Financeiro</div>
-                    <div class="atlas-glass-v">Fluxo limpo</div>
-                  </div>
-                  <div class="atlas-glass">
-                    <div class="atlas-glass-k">Admin</div>
-                    <div class="atlas-glass-v">Controle total</div>
-                  </div>
-                  <div class="atlas-glass">
-                    <div class="atlas-glass-k">Simulador</div>
-                    <div class="atlas-glass-v">Testes rápidos</div>
-                  </div>
-                </div>
-
-                <div class="atlas-fineprint">
-                  Atlas é um “cérebro”. O WhatsApp é só o canal.
-                </div>
-              </div>
+            <div class="stat">
+              <div class="stat-label">Saldo</div>
+              <div id="statBalance" class="stat-value">R$ 0</div>
             </div>
           </div>
-        </section>
-
-        <!-- ADMIN VIEW -->
-        <section class="atlas-view" id="viewAdmin">
-          <div class="atlas-pagehead">
-            <div>
-              <h2 class="atlas-h2">Admin</h2>
-              <div class="atlas-subtle">Gerencie usuários, planos e telefones. Tudo real (banco + API).</div>
+        </div>
+        
+        <!-- CONTEÚDO PRINCIPAL -->
+        <div class="main-content">
+          <!-- VIEW: DASHBOARD -->
+          <div id="viewDashboard" class="view active">
+            <div class="view-header">
+              <h1>Dashboard</h1>
+              <div class="view-subtitle">Visão geral da sua organização</div>
             </div>
-            <div class="atlas-page-actions">
-              <button class="atlas-btn" id="btnRefreshUsers">Atualizar</button>
-              <button class="atlas-btn atlas-btn-primary" id="btnOpenCreateUser">Criar usuário</button>
+            
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-card-icon">📅</div>
+                <div class="stat-card-content">
+                  <div class="stat-card-value" id="totalEvents">0</div>
+                  <div class="stat-card-label">Eventos agendados</div>
+                </div>
+              </div>
+              
+              <div class="stat-card">
+                <div class="stat-card-icon">💰</div>
+                <div class="stat-card-content">
+                  <div class="stat-card-value" id="totalIncome">R$ 0</div>
+                  <div class="stat-card-label">Receitas</div>
+                </div>
+              </div>
+              
+              <div class="stat-card">
+                <div class="stat-card-icon">💸</div>
+                <div class="stat-card-content">
+                  <div class="stat-card-value" id="totalExpenses">R$ 0</div>
+                  <div class="stat-card-label">Despesas</div>
+                </div>
+              </div>
+              
+              <div class="stat-card">
+                <div class="stat-card-icon">🤖</div>
+                <div class="stat-card-content">
+                  <div class="stat-card-value" id="totalMessages">0</div>
+                  <div class="stat-card-label">Mensagens</div>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div class="atlas-grid">
-            <div class="atlas-card">
-              <div class="atlas-card-head">
-                <div class="atlas-card-title">Usuários</div>
-                <div class="atlas-card-sub">Lista completa do banco</div>
-              </div>
-
-              <div class="atlas-table-wrap">
-                <table class="atlas-table">
-                  <thead>
-                    <tr>
-                      <th>E-mail</th>
-                      <th>Nome</th>
-                      <th>Plano</th>
-                      <th>Status</th>
-                      <th>Telefone</th>
-                      <th style="width: 260px;">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody id="usersTbody">
-                    <tr><td colspan="6" class="atlas-td-muted">Carregando…</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="atlas-card">
-              <div class="atlas-card-head">
-                <div class="atlas-card-title">Criar / Editar</div>
-                <div class="atlas-card-sub">Cadastro manual (sem Kiwify por enquanto)</div>
-              </div>
-
-              <div class="atlas-form">
-                <input type="hidden" id="editUserId" />
-                <label class="atlas-label">E-mail</label>
-                <input class="atlas-input" id="userEmail" placeholder="ex: cliente@email.com"/>
-
-                <label class="atlas-label">Nome</label>
-                <input class="atlas-input" id="userNome" placeholder="ex: João"/>
-
-                <div class="atlas-row">
-                  <div class="atlas-col">
-                    <label class="atlas-label">Plano</label>
-                    <select class="atlas-input" id="userPlano">
-                      <option value="FREE">FREE</option>
-                      <option value="PRO">PRO</option>
-                      <option value="PREMIUM">PREMIUM</option>
-                    </select>
+            
+            <div class="content-grid">
+              <!-- CALENDÁRIO -->
+              <div class="content-card">
+                <div class="card-header">
+                  <h3>Calendário</h3>
+                  <div class="card-actions">
+                    <button id="btnPrevMonth" class="btn-icon">◀</button>
+                    <span id="currentMonth">Mês atual</span>
+                    <button id="btnNextMonth" class="btn-icon">▶</button>
                   </div>
-                  <div class="atlas-col">
-                    <label class="atlas-label">Status</label>
-                    <select class="atlas-input" id="userStatus">
-                      <option value="active">active</option>
-                      <option value="blocked">blocked</option>
-                      <option value="inactive">inactive</option>
+                </div>
+                <div id="calendar" class="calendar">
+                  <!-- Gerado por JavaScript -->
+                </div>
+              </div>
+              
+              <!-- EVENTOS PRÓXIMOS -->
+              <div class="content-card">
+                <div class="card-header">
+                  <h3>Próximos Eventos</h3>
+                  <button id="btnAddEvent" class="btn-small">+ Novo</button>
+                </div>
+                <div id="upcomingEvents" class="events-list">
+                  <!-- Gerado por JavaScript -->
+                </div>
+              </div>
+              
+              <!-- TRANSAÇÕES RECENTES -->
+              <div class="content-card">
+                <div class="card-header">
+                  <h3>Transações Recentes</h3>
+                  <button id="btnAddTransaction" class="btn-small">+ Nova</button>
+                </div>
+                <div id="recentTransactions" class="transactions-list">
+                  <!-- Gerado por JavaScript -->
+                </div>
+              </div>
+              
+              <!-- GRÁFICO FINANCEIRO -->
+              <div class="content-card wide">
+                <div class="card-header">
+                  <h3>Resumo Financeiro</h3>
+                  <div class="period-selector">
+                    <select id="periodSelect">
+                      <option value="month">Este mês</option>
+                      <option value="last_month">Mês passado</option>
+                      <option value="year">Este ano</option>
                     </select>
                   </div>
                 </div>
-
-                <label class="atlas-label">Telefone (opcional)</label>
-                <input class="atlas-input" id="userPhone" placeholder="ex: 5548999999999"/>
-
-                <div class="atlas-row">
-                  <button class="atlas-btn atlas-btn-primary" id="btnSaveUser">Salvar</button>
-                  <button class="atlas-btn atlas-btn-ghost" id="btnClearForm">Limpar</button>
-                </div>
-
-                <div class="atlas-note">
-                  Ações do painel admin exigem <strong>X-ADMIN-KEY</strong> configurada no backend.
+                <div id="financeChart" class="chart-container">
+                  <canvas id="chartCanvas"></canvas>
                 </div>
               </div>
             </div>
           </div>
-
-          <div class="atlas-toast" id="toast"></div>
-        </section>
-
-        <!-- APP VIEW -->
-        <section class="atlas-view" id="viewApp">
-          <div class="atlas-pagehead">
-            <div>
-              <h2 class="atlas-h2">Painel</h2>
-              <div class="atlas-subtle">Nesta etapa, o foco é validar o fluxo por chat (simulador) + banco.</div>
+          
+          <!-- VIEW: AGENDA -->
+          <div id="viewAgenda" class="view">
+            <div class="view-header">
+              <h1>Agenda</h1>
+              <div class="view-subtitle">Gerencie seus compromissos</div>
+            </div>
+            
+            <div class="agenda-controls">
+              <div class="view-toggle">
+                <button class="btn-view active" data-view="list">📋 Lista</button>
+                <button class="btn-view" data-view="calendar">📅 Calendário</button>
+              </div>
+              <button id="btnNewEvent" class="btn-primary">+ Novo Evento</button>
+            </div>
+            
+            <div id="agendaList" class="agenda-list">
+              <!-- Eventos carregados -->
+            </div>
+            
+            <div id="agendaCalendar" class="agenda-calendar hidden">
+              <!-- Calendário detalhado -->
             </div>
           </div>
-
-          <div class="atlas-grid">
-            <div class="atlas-card">
-              <div class="atlas-card-head">
-                <div class="atlas-card-title">Agenda (próximos)</div>
-                <div class="atlas-card-sub">Aparecerá conforme você registrar via Simulador</div>
-              </div>
-              <div class="atlas-empty">Em breve: lista de eventos do usuário, com filtros.</div>
+          
+          <!-- VIEW: FINANÇAS -->
+          <div id="viewFinancas" class="view">
+            <div class="view-header">
+              <h1>Finanças</h1>
+              <div class="view-subtitle">Controle suas receitas e despesas</div>
             </div>
-
-            <div class="atlas-card">
-              <div class="atlas-card-head">
-                <div class="atlas-card-title">Financeiro (resumo)</div>
-                <div class="atlas-card-sub">Aparecerá conforme você registrar via Simulador</div>
+            
+            <div class="finance-summary">
+              <div class="summary-card income">
+                <div class="summary-label">Receitas</div>
+                <div id="totalReceitas" class="summary-value">R$ 0</div>
               </div>
-              <div class="atlas-empty">Em breve: saldo, despesas, receitas, vencimentos.</div>
+              <div class="summary-card expense">
+                <div class="summary-label">Despesas</div>
+                <div id="totalDespesas" class="summary-value">R$ 0</div>
+              </div>
+              <div class="summary-card balance">
+                <div class="summary-label">Saldo</div>
+                <div id="saldoTotal" class="summary-value">R$ 0</div>
+              </div>
+            </div>
+            
+            <div class="finance-controls">
+              <div class="filter-group">
+                <select id="filterMonth">
+                  <option value="all">Todos os meses</option>
+                  <!-- Meses gerados por JS -->
+                </select>
+                <select id="filterCategory">
+                  <option value="all">Todas categorias</option>
+                  <option value="alimentacao">Alimentação</option>
+                  <option value="transporte">Transporte</option>
+                  <option value="moradia">Moradia</option>
+                  <option value="lazer">Lazer</option>
+                  <option value="renda">Renda</option>
+                  <option value="outros">Outros</option>
+                </select>
+              </div>
+              <div class="action-group">
+                <button id="btnExport" class="btn-secondary">Exportar</button>
+                <button id="btnNewTransaction" class="btn-primary">+ Transação</button>
+              </div>
+            </div>
+            
+            <div id="transactionsTable" class="transactions-table">
+              <!-- Tabela gerada por JS -->
             </div>
           </div>
-        </section>
-
-        <!-- CHAT VIEW -->
-        <section class="atlas-view" id="viewChat">
-          <div class="atlas-pagehead">
-            <div>
-              <h2 class="atlas-h2">Simulador WhatsApp (Fake)</h2>
-              <div class="atlas-subtle">Aqui você testa o Atlas antes de ligar qualquer API de WhatsApp.</div>
+          
+          <!-- VIEW: WHATSAPP -->
+          <div id="viewWhatsapp" class="view">
+            <div class="view-header">
+              <h1>WhatsApp</h1>
+              <div class="view-subtitle">Simulador de mensagens</div>
             </div>
-            <div class="atlas-page-actions">
-              <button class="atlas-btn" id="btnClearChat">Limpar</button>
-            </div>
-          </div>
-
-          <div class="atlas-chat">
-            <div class="atlas-chat-head">
-              <div class="atlas-chat-avatar">AT</div>
-              <div class="atlas-chat-meta">
-                <div class="atlas-chat-name">Atlas</div>
-                <div class="atlas-chat-sub">Simulador de canal · grava no banco</div>
+            
+            <div class="whatsapp-container">
+              <div class="whatsapp-header">
+                <div class="whatsapp-avatar">AT</div>
+                <div class="whatsapp-info">
+                  <div class="whatsapp-name">Atlas Bot</div>
+                  <div class="whatsapp-status">Online • Simulador</div>
+                </div>
               </div>
-              <div class="atlas-chat-right">
-                <input class="atlas-input atlas-input-sm" id="chatFrom" placeholder="from: 5548999999999" />
+              
+              <div id="chatMessages" class="whatsapp-messages">
+                <div class="message bot">
+                  <div class="message-content">
+                    Olá! Sou o Atlas, seu assistente pessoal.
+                    <div class="message-examples">
+                      <strong>Exemplos:</strong><br>
+                      • "pagar aluguel 1500 dia 05"<br>
+                      • "médico amanhã 14h"<br>
+                      • "recebi 3200 salário"
+                    </div>
+                  </div>
+                  <div class="message-time">Agora</div>
+                </div>
               </div>
-            </div>
-
-            <div class="atlas-chat-body" id="chatBody">
-              <div class="atlas-chat-bubble atlas-chat-bubble-atlas">
-                Envie uma mensagem para começar. Exemplos:
-                <div class="atlas-chat-ex">
-                  <div>pagar aluguel 1200 dia 05</div>
-                  <div>recebi 4800 salário</div>
-                  <div>médico dia 10 9h</div>
+              
+              <div class="whatsapp-input">
+                <input type="text" id="chatInput" placeholder="Digite uma mensagem...">
+                <button id="btnSendMessage" class="btn-primary">Enviar</button>
+              </div>
+              
+              <div class="whatsapp-tips">
+                <div class="tip">
+                  💡 <strong>Dica:</strong> O bot entende linguagem natural e salva automaticamente.
                 </div>
               </div>
             </div>
-
-            <div class="atlas-chat-foot">
-              <input class="atlas-input" id="chatMessage" placeholder="Digite como se fosse WhatsApp…" />
-              <button class="atlas-btn atlas-btn-primary" id="btnSendChat">Enviar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- MODAL: NOVO EVENTO -->
+    <div id="modalEvent" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Novo Evento</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Título</label>
+            <input type="text" id="eventTitle" placeholder="Ex: Reunião com cliente">
+          </div>
+          <div class="form-group">
+            <label>Descrição (opcional)</label>
+            <textarea id="eventDescription" rows="2"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Data</label>
+              <input type="date" id="eventDate">
+            </div>
+            <div class="form-group">
+              <label>Hora (opcional)</label>
+              <input type="time" id="eventTime">
             </div>
           </div>
-        </section>
-
-      </main>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary modal-close">Cancelar</button>
+          <button id="btnSaveEvent" class="btn-primary">Salvar Evento</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- MODAL: NOVA TRANSAÇÃO -->
+    <div id="modalTransaction" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Nova Transação</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Tipo</label>
+            <div class="type-toggle">
+              <button class="type-btn active" data-type="income">Receita</button>
+              <button class="type-btn" data-type="expense">Despesa</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Descrição</label>
+            <input type="text" id="transactionDescription" placeholder="Ex: Salário, Aluguel, Mercado">
+          </div>
+          <div class="form-group">
+            <label>Valor (R$)</label>
+            <input type="number" id="transactionValue" step="0.01" placeholder="0,00">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Categoria</label>
+              <select id="transactionCategory">
+                <option value="renda">Renda</option>
+                <option value="alimentacao">Alimentação</option>
+                <option value="transporte">Transporte</option>
+                <option value="moradia">Moradia</option>
+                <option value="lazer">Lazer</option>
+                <option value="outros">Outros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Data</label>
+              <input type="date" id="transactionDate">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary modal-close">Cancelar</button>
+          <button id="btnSaveTransaction" class="btn-primary">Salvar Transação</button>
+        </div>
+      </div>
     </div>
   </div>
-
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

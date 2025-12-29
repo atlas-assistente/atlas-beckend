@@ -1,10 +1,9 @@
 import express from "express";
 import cors from "cors";
 import { pool } from "./db.js";
-import { parseMessage } from "./parser.js";
-import { startScheduler } from "./scheduler.js";
-import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
+import path from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,22 +12,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ===================== ADMIN AUTH =====================
-function mustAdmin(req, res) {
-  const k = (req.headers["x-admin-key"] || "").toString();
-  const expected = (process.env.ADMIN_KEY || "").toString();
-  if (!expected || k !== expected) {
-    res.status(401).json({ error: "Unauthorized" });
-    return false;
-  }
-  return true;
-}
-
-// ===================== AUTO MIGRATE =====================
+// ====================== MIGRAÇÃO ======================
 async function autoMigrate() {
   await pool.query(`
     CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
+    
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email TEXT UNIQUE NOT NULL,
@@ -37,50 +25,14 @@ async function autoMigrate() {
       status TEXT DEFAULT 'active',
       criado_em TIMESTAMP DEFAULT now()
     );
-
+    
     CREATE TABLE IF NOT EXISTS whatsapp_numbers (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       phone TEXT UNIQUE,
-      verificado BOOLEAN DEFAULT false,
       criado_em TIMESTAMP DEFAULT now()
     );
-
-    CREATE TABLE IF NOT EXISTS messages (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      channel TEXT,
-      from_phone TEXT,
-      text TEXT,
-      parsed JSONB,
-      reply TEXT,
-      criado_em TIMESTAMP DEFAULT now()
-    );
-
-    CREATE TABLE IF NOT EXISTS events (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-      tipo TEXT,
-      titulo TEXT,
-      descricao TEXT,
-      data DATE,
-      hora TIME,
-      status TEXT DEFAULT 'pending',
-      notificado BOOLEAN DEFAULT false,
-      criado_em TIMESTAMP DEFAULT now()
-    );
-
-    CREATE TABLE IF NOT EXISTS financeiro (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-      tipo TEXT CHECK (tipo IN ('income', 'expense')),
-      descricao TEXT,
-      valor DECIMAL(10,2),
-      data DATE,
-      categoria TEXT,
-      pago BOOLEAN DEFAULT false,
-      criado_em TIMESTAMP DEFAULT now()
-    );
-
+    
     CREATE TABLE IF NOT EXISTS login_codes (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -88,308 +40,226 @@ async function autoMigrate() {
       expires_at TIMESTAMP,
       used BOOLEAN DEFAULT false
     );
-
+    
     CREATE TABLE IF NOT EXISTS sessions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       token TEXT UNIQUE,
-      criado_em TIMESTAMP DEFAULT now(),
       expires_at TIMESTAMP
     );
+    
+    CREATE TABLE IF NOT EXISTS events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      titulo TEXT NOT NULL,
+      descricao TEXT,
+      data DATE NOT NULL,
+      hora TIME,
+      status TEXT DEFAULT 'pending',
+      notificado BOOLEAN DEFAULT false,
+      criado_em TIMESTAMP DEFAULT now()
+    );
+    
+    CREATE TABLE IF NOT EXISTS transacoes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      tipo TEXT NOT NULL CHECK (tipo IN ('income', 'expense')),
+      descricao TEXT NOT NULL,
+      valor DECIMAL(10,2) NOT NULL,
+      categoria TEXT DEFAULT 'outros',
+      data DATE NOT NULL,
+      pago BOOLEAN DEFAULT false,
+      criado_em TIMESTAMP DEFAULT now()
+    );
+    
+    CREATE TABLE IF NOT EXISTS messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      from_phone TEXT,
+      texto TEXT,
+      parsed JSONB,
+      resposta TEXT,
+      canal TEXT DEFAULT 'simulator',
+      criado_em TIMESTAMP DEFAULT now()
+    );
   `);
-  console.log("✅ Banco de dados migrado");
+  console.log("✅ Banco migrado");
 }
 
 await autoMigrate();
+
+// ====================== PARSER ======================
+function parseMessage(texto) {
+  const t = texto.toLowerCase().trim();
+  const valorMatch = t.match(/(\d+[.,]?\d*)/);
+  const valor = valorMatch ? parseFloat(valorMatch[1].replace(",", ".")) : null;
+  
+  const dataMatch = t.match(/dia\s?(\d{1,2})/);
+  let data = null;
+  if (dataMatch) {
+    const dia = parseInt(dataMatch[1]);
+    const hoje = new Date();
+    const mes = hoje.getMonth() + 1;
+    const ano = hoje.getFullYear();
+    data = `${ano}-${mes.toString().padStart(2, '0')}-${dia.toString().padStart(2, '0')}`;
+  }
+  
+  const horaMatch = t.match(/(\d{1,2})[h:]/);
+  const hora = horaMatch ? `${horaMatch[1].padStart(2, '0')}:00` : null;
+  
+  if (t.includes("pagar") || t.includes("pagamento") || t.includes("conta")) {
+    return {
+      tipo: "expense",
+      descricao: texto,
+      valor,
+      data: data || new Date().toISOString().split('T')[0],
+      categoria: "contas"
+    };
+  }
+  
+  if (t.includes("recebi") || t.includes("ganhei") || t.includes("salário")) {
+    return {
+      tipo: "income",
+      descricao: texto,
+      valor,
+      data: data || new Date().toISOString().split('T')[0],
+      categoria: "renda"
+    };
+  }
+  
+  if (t.includes("dia") || t.includes("médico") || t.includes("reunião")) {
+    return {
+      tipo: "event",
+      titulo: texto,
+      descricao: texto,
+      data: data || new Date().toISOString().split('T')[0],
+      hora
+    };
+  }
+  
+  return { tipo: "unknown", texto };
+}
+
+// ====================== AGENDADOR ======================
+import cron from "node-cron";
+
+function startScheduler() {
+  cron.schedule("* * * * *", async () => {
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      const agora = new Date().toTimeString().split(':').slice(0, 2).join(':');
+      
+      const eventos = await pool.query(
+        `SELECT e.*, u.email, wn.phone 
+         FROM events e
+         JOIN users u ON u.id = e.user_id
+         LEFT JOIN whatsapp_numbers wn ON wn.user_id = u.id
+         WHERE e.data = $1 AND e.notificado = false
+         AND (e.hora <= $2 OR e.hora IS NULL)
+         AND e.status = 'pending'`,
+        [hoje, agora]
+      );
+      
+      for (const evento of eventos.rows) {
+        await pool.query(
+          `UPDATE events SET notificado = true WHERE id = $1`,
+          [evento.id]
+        );
+        
+        console.log(`🔔 Lembrete: ${evento.titulo} para ${evento.phone || evento.email}`);
+      }
+    } catch (err) {
+      console.error("Erro scheduler:", err);
+    }
+  });
+  console.log("⏰ Agendador iniciado");
+}
+
 startScheduler();
 
-// ===================== API =====================
+// ====================== MIDDLEWARE ADMIN ======================
+function mustAdmin(req, res, next) {
+  const key = req.headers["x-admin-key"];
+  const expected = process.env.ADMIN_KEY || "admin123";
+  if (key === expected) {
+    next();
+  } else {
+    res.status(401).json({ error: "Unauthorized" });
+  }
+}
+
+// ====================== MIDDLEWARE AUTH ======================
+async function authenticate(req, res, next) {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return res.status(401).json({ error: "Token requerido" });
+  
+  try {
+    const sessao = await pool.query(
+      `SELECT s.*, u.* FROM sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.token = $1 AND s.expires_at > NOW()`,
+      [token]
+    );
+    
+    if (sessao.rows.length === 0) {
+      return res.status(401).json({ error: "Sessão expirada" });
+    }
+    
+    req.user = sessao.rows[0];
+    next();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// ====================== API ROTAS ======================
 const api = express.Router();
 
-// Health check
-api.get("/health", (req, res) => res.json({ ok: true }));
+// HEALTH
+api.get("/health", (req, res) => res.json({ ok: true, time: new Date() }));
 
-// ===================== ADMIN =====================
-api.get("/admin/users", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
-  try {
-    const result = await pool.query(`
-      SELECT u.*, wn.phone 
-      FROM users u
-      LEFT JOIN whatsapp_numbers wn ON wn.user_id = u.id
-      ORDER BY u.criado_em DESC
-    `);
-    res.json({ users: result.rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-api.get("/admin/users/:id", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
-  try {
-    const result = await pool.query(
-      `SELECT u.*, wn.phone FROM users u
-       LEFT JOIN whatsapp_numbers wn ON wn.user_id = u.id
-       WHERE u.id = $1`,
-      [req.params.id]
-    );
-    res.json({ user: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-api.post("/admin/users", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
-  const { email, nome, plano, status, phone } = req.body;
-  
-  try {
-    const client = await pool.connect();
-    await client.query('BEGIN');
-    
-    const userResult = await client.query(
-      `INSERT INTO users (email, nome, plano, status)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (email) DO UPDATE
-       SET nome = $2, plano = $3, status = $4
-       RETURNING *`,
-      [email.toLowerCase(), nome, plano || 'FREE', status || 'active']
-    );
-    
-    const user = userResult.rows[0];
-    
-    if (phone) {
-      await client.query(
-        `INSERT INTO whatsapp_numbers (user_id, phone)
-         VALUES ($1, $2)
-         ON CONFLICT (phone) DO UPDATE SET user_id = $1`,
-        [user.id, phone]
-      );
-    }
-    
-    await client.query('COMMIT');
-    client.release();
-    res.json({ ok: true, user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-api.put("/admin/users/:id", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
-  const { email, nome, plano, status, phone } = req.body;
-  
-  try {
-    const client = await pool.connect();
-    await client.query('BEGIN');
-    
-    await client.query(
-      `UPDATE users SET email = $1, nome = $2, plano = $3, status = $4
-       WHERE id = $5`,
-      [email.toLowerCase(), nome, plano, status, req.params.id]
-    );
-    
-    if (phone) {
-      await client.query(
-        `INSERT INTO whatsapp_numbers (user_id, phone)
-         VALUES ($1, $2)
-         ON CONFLICT (phone) DO UPDATE SET user_id = $1`,
-        [req.params.id, phone]
-      );
-    }
-    
-    await client.query('COMMIT');
-    client.release();
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-api.delete("/admin/users/:id", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
-  try {
-    await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===================== DASHBOARD DATA =====================
-api.get("/admin/dashboard/:userId?", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
-  
-  const userId = req.params.userId;
-  const whereClause = userId ? 'WHERE user_id = $1' : '';
-  const params = userId ? [userId] : [];
-  
-  try {
-    // Eventos
-    const eventsResult = await pool.query(`
-      SELECT * FROM events ${whereClause}
-      ORDER BY data, hora
-      LIMIT 20
-    `, params);
-    
-    // Finanças
-    const financeResult = await pool.query(`
-      SELECT * FROM financeiro ${whereClause}
-      ORDER BY data DESC
-      LIMIT 20
-    `, params);
-    
-    // Resumo financeiro
-    const summaryResult = await pool.query(`
-      SELECT 
-        tipo,
-        COUNT(*) as count,
-        SUM(valor) as total
-      FROM financeiro ${whereClause}
-      GROUP BY tipo
-    `, params);
-    
-    res.json({
-      events: eventsResult.rows,
-      finances: financeResult.rows,
-      summary: summaryResult.rows
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===================== SIMULADOR WHATSAPP =====================
-api.post("/simulator/whatsapp", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
-  
-  const { from, message } = req.body;
-  const parsed = parseMessage(message || "");
-  
-  try {
-    const client = await pool.connect();
-    await client.query('BEGIN');
-    
-    // 1. Encontrar usuário pelo telefone
-    const userResult = await client.query(`
-      SELECT u.* FROM users u
-      JOIN whatsapp_numbers wn ON wn.user_id = u.id
-      WHERE wn.phone = $1
-    `, [from]);
-    
-    let userId = userResult.rows[0]?.id;
-    
-    // Se não encontrou, criar usuário temporário
-    if (!userId) {
-      const newUser = await client.query(
-        `INSERT INTO users (email, nome, plano, status)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [`${from}@temp.com`, `Usuário ${from}`, 'FREE', 'active']
-      );
-      userId = newUser.rows[0].id;
-      
-      await client.query(
-        `INSERT INTO whatsapp_numbers (user_id, phone)
-         VALUES ($1, $2)`,
-        [userId, from]
-      );
-    }
-    
-    // 2. Salvar mensagem
-    const reply = `✅ Entendido! ${parsed.tipo === 'expense' ? 'Despesa registrada' : 
-                    parsed.tipo === 'income' ? 'Receita registrada' : 
-                    'Evento agendado'}`;
-    
-    await client.query(
-      `INSERT INTO messages (channel, from_phone, text, parsed, reply)
-       VALUES ('simulator', $1, $2, $3, $4)`,
-      [from, message, JSON.stringify(parsed), reply]
-    );
-    
-    // 3. Salvar no banco conforme o tipo
-    if (parsed.tipo === 'expense' || parsed.tipo === 'income') {
-      await client.query(
-        `INSERT INTO financeiro (user_id, tipo, descricao, valor, data, pago)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, parsed.tipo, parsed.descricao || message, 
-         parsed.valor, parsed.data || new Date().toISOString().split('T')[0],
-         parsed.tipo === 'income']
-      );
-    }
-    
-    if (parsed.tipo === 'event') {
-      await client.query(
-        `INSERT INTO events (user_id, tipo, titulo, descricao, data, hora, status)
-         VALUES ($1, 'appointment', $2, $3, $4, $5, 'pending')`,
-        [userId, parsed.titulo || parsed.descricao || message,
-         parsed.descricao || message, parsed.data, parsed.hora]
-      );
-    }
-    
-    await client.query('COMMIT');
-    client.release();
-    
-    res.json({ 
-      ok: true, 
-      reply,
-      parsed,
-      userId
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ===================== ROTAS PÚBLICAS (login) =====================
+// AUTH
 api.post("/auth/request", async (req, res) => {
-  const { email } = req.body;
-  
   try {
-    // Gerar código
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60000); // 15 minutos
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email requerido" });
     
-    // Verificar se usuário existe
-    let userResult = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
+    let user = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
       [email.toLowerCase()]
     );
     
     let userId;
-    if (userResult.rows.length === 0) {
-      // Criar usuário se não existir
-      const newUser = await pool.query(
-        `INSERT INTO users (email, nome, plano, status)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [email.toLowerCase(), email.split('@')[0], 'FREE', 'active']
+    if (user.rows.length === 0) {
+      const novo = await pool.query(
+        `INSERT INTO users (email, nome) VALUES ($1, $2) RETURNING id`,
+        [email.toLowerCase(), email.split('@')[0]]
       );
-      userId = newUser.rows[0].id;
+      userId = novo.rows[0].id;
     } else {
-      userId = userResult.rows[0].id;
+      userId = user.rows[0].id;
     }
     
-    // Salvar código
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 15 * 60000);
+    
     await pool.query(
       `INSERT INTO login_codes (user_id, code, expires_at)
        VALUES ($1, $2, $3)`,
-      [userId, code, expiresAt]
+      [userId, code, expires]
     );
     
-    // Em produção, enviaria email. Aqui só retorna.
-    res.json({ ok: true, code: code }); // DEBUG: retorna código
-    
+    console.log(`📧 Código para ${email}: ${code}`);
+    res.json({ ok: true, code: code });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 api.post("/auth/verify", async (req, res) => {
-  const { email, code } = req.body;
-  
   try {
+    const { email, code } = req.body;
+    
     const result = await pool.query(
       `SELECT lc.*, u.id as user_id 
        FROM login_codes lc
@@ -400,40 +270,284 @@ api.post("/auth/verify", async (req, res) => {
     );
     
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Código inválido ou expirado" });
+      return res.status(401).json({ error: "Código inválido" });
     }
     
-    // Marcar código como usado
     await pool.query(
-      'UPDATE login_codes SET used = true WHERE id = $1',
+      "UPDATE login_codes SET used = true WHERE id = $1",
       [result.rows[0].id]
     );
     
-    // Gerar token
-    const token = require('crypto').randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60000); // 7 dias
+    const token = crypto.randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60000);
     
     await pool.query(
       `INSERT INTO sessions (user_id, token, expires_at)
        VALUES ($1, $2, $3)`,
-      [result.rows[0].user_id, token, expiresAt]
+      [result.rows[0].user_id, token, expires]
     );
     
-    res.json({ ok: true, token });
-    
+    res.json({ ok: true, token, userId: result.rows[0].user_id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ===================== SETUP =====================
-app.use("/api", api);
-app.use(express.static(__dirname));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+// USUÁRIO
+api.get("/user/profile", authenticate, async (req, res) => {
+  try {
+    res.json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        nome: req.user.nome,
+        plano: req.user.plano
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+api.get("/user/dashboard", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Eventos
+    const eventos = await pool.query(
+      `SELECT * FROM events 
+       WHERE user_id = $1 AND data >= CURRENT_DATE
+       ORDER BY data, hora
+       LIMIT 10`,
+      [userId]
+    );
+    
+    // Transações recentes
+    const transacoes = await pool.query(
+      `SELECT * FROM transacoes 
+       WHERE user_id = $1
+       ORDER BY data DESC
+       LIMIT 10`,
+      [userId]
+    );
+    
+    // Resumo financeiro
+    const resumo = await pool.query(
+      `SELECT 
+        tipo,
+        COUNT(*) as quantidade,
+        SUM(valor) as total
+       FROM transacoes
+       WHERE user_id = $1
+       GROUP BY tipo`,
+      [userId]
+    );
+    
+    // Calendário (eventos do mês)
+    const hoje = new Date();
+    const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      .toISOString().split('T')[0];
+    const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+      .toISOString().split('T')[0];
+    
+    const calendario = await pool.query(
+      `SELECT data, COUNT(*) as eventos,
+        ARRAY_AGG(titulo) as titulos
+       FROM events
+       WHERE user_id = $1 
+       AND data BETWEEN $2 AND $3
+       GROUP BY data
+       ORDER BY data`,
+      [userId, primeiroDia, ultimoDia]
+    );
+    
+    res.json({
+      eventos: eventos.rows,
+      transacoes: transacoes.rows,
+      resumo: resumo.rows,
+      calendario: calendario.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+api.post("/user/event", authenticate, async (req, res) => {
+  try {
+    const { titulo, descricao, data, hora } = req.body;
+    const result = await pool.query(
+      `INSERT INTO events (user_id, titulo, descricao, data, hora)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [req.user.id, titulo, descricao, data, hora]
+    );
+    res.json({ ok: true, evento: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+api.post("/user/transacao", authenticate, async (req, res) => {
+  try {
+    const { tipo, descricao, valor, categoria, data } = req.body;
+    const result = await pool.query(
+      `INSERT INTO transacoes (user_id, tipo, descricao, valor, categoria, data)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [req.user.id, tipo, descricao, valor, categoria || 'outros', data]
+    );
+    res.json({ ok: true, transacao: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// SIMULADOR WHATSAPP
+api.post("/simulator/whatsapp", mustAdmin, async (req, res) => {
+  try {
+    const { from, message } = req.body;
+    const parsed = parseMessage(message);
+    
+    // Encontrar ou criar usuário
+    let userResult = await pool.query(
+      `SELECT u.id FROM users u
+       JOIN whatsapp_numbers wn ON wn.user_id = u.id
+       WHERE wn.phone = $1`,
+      [from]
+    );
+    
+    let userId;
+    if (userResult.rows.length === 0) {
+      const novoUser = await pool.query(
+        `INSERT INTO users (email, nome) 
+         VALUES ($1, $2) RETURNING id`,
+        [`${from}@temp.com`, `Usuário ${from}`]
+      );
+      userId = novoUser.rows[0].id;
+      
+      await pool.query(
+        `INSERT INTO whatsapp_numbers (user_id, phone) VALUES ($1, $2)`,
+        [userId, from]
+      );
+    } else {
+      userId = userResult.rows[0].id;
+    }
+    
+    // Salvar mensagem
+    await pool.query(
+      `INSERT INTO messages (user_id, from_phone, texto, parsed, canal)
+       VALUES ($1, $2, $3, $4, 'simulator')`,
+      [userId, from, message, JSON.stringify(parsed)]
+    );
+    
+    // Processar conforme tipo
+    let resposta = "✅ Recebido!";
+    
+    if (parsed.tipo === 'expense' || parsed.tipo === 'income') {
+      await pool.query(
+        `INSERT INTO transacoes (user_id, tipo, descricao, valor, categoria, data)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [userId, parsed.tipo, parsed.descricao, parsed.valor, 
+         parsed.categoria, parsed.data]
+      );
+      resposta = `✅ ${parsed.tipo === 'income' ? 'Receita' : 'Despesa'} registrada!`;
+    }
+    
+    if (parsed.tipo === 'event') {
+      await pool.query(
+        `INSERT INTO events (user_id, titulo, descricao, data, hora)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [userId, parsed.titulo, parsed.descricao, parsed.data, parsed.hora]
+      );
+      resposta = `✅ Evento agendado para ${parsed.data}`;
+    }
+    
+    // Salvar resposta
+    await pool.query(
+      `UPDATE messages SET resposta = $1 
+       WHERE user_id = $2 AND from_phone = $3 
+       AND texto = $4`,
+      [resposta, userId, from, message]
+    );
+    
+    res.json({ ok: true, resposta, parsed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ADMIN
+api.get("/admin/users", mustAdmin, async (req, res) => {
+  try {
+    const users = await pool.query(`
+      SELECT u.*, wn.phone,
+        (SELECT COUNT(*) FROM events WHERE user_id = u.id) as total_eventos,
+        (SELECT COUNT(*) FROM transacoes WHERE user_id = u.id) as total_transacoes
+      FROM users u
+      LEFT JOIN whatsapp_numbers wn ON wn.user_id = u.id
+      ORDER BY u.criado_em DESC
+    `);
+    res.json({ users: users.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+api.post("/admin/users", mustAdmin, async (req, res) => {
+  try {
+    const { email, nome, plano, status, phone } = req.body;
+    const result = await pool.query(
+      `INSERT INTO users (email, nome, plano, status)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO UPDATE
+       SET nome = $2, plano = $3, status = $4
+       RETURNING *`,
+      [email.toLowerCase(), nome, plano || 'FREE', status || 'active']
+    );
+    
+    const user = result.rows[0];
+    
+    if (phone) {
+      await pool.query(
+        `INSERT INTO whatsapp_numbers (user_id, phone)
+         VALUES ($1, $2)
+         ON CONFLICT (phone) DO UPDATE SET user_id = $1`,
+        [user.id, phone]
+      );
+    }
+    
+    res.json({ ok: true, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+api.delete("/admin/users/:id", mustAdmin, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// MONTAR API
+app.use("/api", api);
+
+// SERVIR FRONTEND
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// INICIAR
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Atlas rodando na porta ${PORT}`);
+  console.log(`🚀 Atlas rodando: http://localhost:${PORT}`);
+  console.log(`📞 API: https://atlas-beckend.onrender.com/api`);
 });

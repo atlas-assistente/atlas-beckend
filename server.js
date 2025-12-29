@@ -141,6 +141,73 @@ api.post("/admin/users", async (req, res) => {
   res.json({ ok: true, user });
 });
 
+api.get("/admin/users/:id", async (req, res) => {
+  if (!mustAdmin(req, res)) return;
+
+  const { id } = req.params;
+
+  const r = await pool.query(
+    `
+    SELECT u.id, u.email, u.nome, u.plano, u.status, wn.phone
+    FROM users u
+    LEFT JOIN whatsapp_numbers wn ON wn.user_id = u.id
+    WHERE u.id = $1
+    `,
+    [id]
+  );
+
+  if (!r.rows.length) {
+    return res.status(404).json({ error: "Usuário não encontrado" });
+  }
+
+  res.json({ user: r.rows[0] });
+});
+
+api.put("/admin/users/:id", async (req, res) => {
+  if (!mustAdmin(req, res)) return;
+
+  const { id } = req.params;
+  const { email, nome, plano, status, phone } = req.body;
+
+  const up = await pool.query(
+    `
+    UPDATE users
+    SET email=$1, nome=$2, plano=$3, status=$4
+    WHERE id=$5
+    RETURNING id,email,nome,plano,status
+    `,
+    [email.toLowerCase(), nome, plano, status, id]
+  );
+
+  if (!up.rows.length) {
+    return res.status(404).json({ error: "Usuário não encontrado" });
+  }
+
+  if (phone) {
+    await pool.query(
+      `
+      INSERT INTO whatsapp_numbers (user_id, phone)
+      VALUES ($1,$2)
+      ON CONFLICT (phone) DO UPDATE SET user_id=$1
+      `,
+      [id, phone]
+    );
+  }
+
+  res.json({ ok: true, user: up.rows[0] });
+});
+
+api.delete("/admin/users/:id", async (req, res) => {
+  if (!mustAdmin(req, res)) return;
+
+  const { id } = req.params;
+
+  await pool.query(`DELETE FROM users WHERE id=$1`, [id]);
+
+  res.json({ ok: true });
+});
+
+
 // SIMULADOR WHATSAPP
 api.post("/simulator/whatsapp", async (req, res) => {
   if (!mustAdmin(req, res)) return;

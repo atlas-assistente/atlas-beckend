@@ -91,6 +91,7 @@ function route() {
   }
 
   if (hash.startsWith("#/app")) {
+    loadDashboard();
     views.app.classList.add("show");
     nav.app.classList.add("active");
     return;
@@ -383,4 +384,37 @@ async function sendChat() {
 (async function init(){
   await pingApi();
   route();
+
+async function loadDashboard() {
+  try {
+    const agenda = await fetch(`${API_BASE}/dashboard/agenda`, {
+      headers: adminHeaders()
+    }).then(r => r.json());
+
+    const finance = await fetch(`${API_BASE}/dashboard/finance`, {
+      headers: adminHeaders()
+    }).then(r => r.json());
+
+    const agendaBox = document.querySelector("#agendaBox");
+    const financeBox = document.querySelector("#financeBox");
+
+    if (agenda.items.length === 0) {
+      agendaBox.innerHTML = "Nenhum registro ainda.";
+    } else {
+      agendaBox.innerHTML = agenda.items
+        .map(i => `${i.from_phone} → ${i.text}`)
+        .join("<br>");
+    }
+
+    financeBox.innerHTML = `
+      Entradas: R$ ${finance.income || 0}<br>
+      Saídas: R$ ${finance.expense || 0}
+    `;
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+  
 })();

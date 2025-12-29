@@ -507,3 +507,134 @@ body{
   .atlas-hero{ grid-template-columns: 1fr; }
   .atlas-chat-right{ width: 100%; }
 }
+
+
+
+/* Dashboard styles */
+.atlas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.atlas-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  transition: transform 0.12s ease;
+}
+
+.atlas-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(36, 107, 253, 0.18);
+}
+
+.atlas-item-main {
+  flex: 1;
+}
+
+.atlas-item-title {
+  font-weight: 650;
+  color: var(--text);
+}
+
+.atlas-item-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.atlas-item-badge {
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 750;
+}
+
+.atlas-item-badge.pending {
+  background: rgba(247, 144, 9, 0.10);
+  color: rgba(127, 85, 0, 0.98);
+  border: 1px solid rgba(247, 144, 9, 0.22);
+}
+
+.atlas-item-badge.done {
+  background: rgba(18, 183, 106, 0.10);
+  color: rgba(6, 95, 70, 0.98);
+  border: 1px solid rgba(18, 183, 106, 0.22);
+}
+
+.atlas-item-amount {
+  font-weight: 800;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+
+.atlas-item-amount.income {
+  background: rgba(18, 183, 106, 0.12);
+  color: rgba(6, 95, 70, 1);
+  border: 1px solid rgba(18, 183, 106, 0.22);
+}
+
+.atlas-item-amount.expense {
+  background: rgba(240, 68, 56, 0.10);
+  color: rgba(122, 33, 29, 1);
+  border: 1px solid rgba(240, 68, 56, 0.20);
+}
+
+.atlas-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.atlas-summary-item {
+  text-align: center;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.atlas-summary-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+
+.atlas-summary-value {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.atlas-summary-value.income {
+  color: rgba(6, 95, 70, 1);
+}
+
+.atlas-summary-value.expense {
+  color: rgba(122, 33, 29, 1);
+}
+
+.atlas-summary-value.positive {
+  color: rgba(6, 95, 70, 1);
+}
+
+.atlas-summary-value.negative {
+  color: rgba(122, 33, 29, 1);
+}
+
+/* Empty state */
+.atlas-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 13px;
+}

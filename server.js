@@ -190,6 +190,7 @@ api.get("/dashboard/agenda", async (req, res) => {
   const r = await pool.query(`
     SELECT id, from_phone, parsed, text, criado_em
     FROM messages
+    WHERE user_id IS NOT NULL
     WHERE parsed->>'tipo' IN ('expense','income','event')
     ORDER BY criado_em DESC
     LIMIT 50
@@ -206,6 +207,7 @@ api.get("/dashboard/finance", async (req, res) => {
       SUM(CASE WHEN parsed->>'tipo' = 'income' THEN (parsed->>'valor')::numeric ELSE 0 END) AS income,
       SUM(CASE WHEN parsed->>'tipo' = 'expense' THEN (parsed->>'valor')::numeric ELSE 0 END) AS expense
     FROM messages
+    WHERE user_id IS NOT NULL
   `);
 
   res.json(r.rows[0]);

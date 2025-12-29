@@ -191,7 +191,7 @@ api.get("/dashboard/agenda", async (req, res) => {
     SELECT id, from_phone, parsed, text, criado_em
     FROM messages
     WHERE user_id IS NOT NULL
-    WHERE parsed->>'tipo' IN ('expense','income','event')
+    AND parsed->>'tipo' IN ('expense','income','event')
     ORDER BY criado_em DESC
     LIMIT 50
   `);

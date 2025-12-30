@@ -54,6 +54,8 @@ function mustAdmin(req, res) {
 
 
 
+
+
 // =======================
 // AUTO MIGRATE
 // =======================
@@ -75,7 +77,7 @@ async function autoMigrate() {
     );
   `);
 
-  // 3. Remove FK antiga (se existir)
+  // 3. REMOVE FK ANTIGA (a que trava o DELETE)
   await pool.query(`
     DO $$
     BEGIN
@@ -90,7 +92,7 @@ async function autoMigrate() {
     END$$;
   `);
 
-  // 4. Tabela whatsapp_numbers com CASCADE
+  // 4. whatsapp_numbers com CASCADE
   await pool.query(`
     CREATE TABLE IF NOT EXISTS whatsapp_numbers (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -101,7 +103,7 @@ async function autoMigrate() {
     );
   `);
 
-  // 5. Messages
+  // 5. messages
   await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -139,6 +141,7 @@ async function autoMigrate() {
 
   console.log("Atlas DB OK");
 }
+
 
 
 

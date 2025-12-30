@@ -329,8 +329,6 @@ api.get("/dashboard/finance", async (req, res) => {
   res.json(r.rows[0]);
 });
 
-// Registra a API
-app.use("/api", api);
 
 // =======================
 // FRONTEND
@@ -340,6 +338,9 @@ app.use(express.static(__dirname));
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
+
+// Registra a API
+app.use("/api", api);
 
 api.post("/login", async (req, res) => {
   const { email, password } = req.body;

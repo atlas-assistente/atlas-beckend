@@ -35,11 +35,17 @@ elApiHostText.textContent = API_BASE;
 function getAdminKey() {
   return localStorage.getItem("atlas_admin_key") || "";
 }
+
+function getUserToken() {
+  return localStorage.getItem("atlas_user_token") || "";
+}
+
 function setAdminKey(v) {
   localStorage.setItem("atlas_admin_key", v);
 }
 function clearSession() {
   localStorage.removeItem("atlas_admin_key");
+  localStorage.removeItem("atlas_user_token");
 }
 
 function setStatus(text) {
@@ -67,12 +73,19 @@ function hideAllViews() {
 function route() {
   const hash = (location.hash || "#/login").toLowerCase();
   const adminKey = getAdminKey();
-  const session = adminKey ? "Admin" : "Visitante";
+  const userToken = getUserToken();
+  const session = adminKey ? "Admin" : (userToken ? "Usuário" : "Visitante");
+
   elSessionLabel.textContent = session;
 
   hideAllViews();
 
-  if (!adminKey && (hash.startsWith("#/admin") || hash.startsWith("#/app") || hash.startsWith("#/chat"))) {
+  if (!adminKey && hash.startsWith("#/admin")) {
+    views.login.classList.add("show");
+    return;
+  }
+
+  if (!adminKey && !userToken && (hash.startsWith("#/app") || hash.startsWith("#/chat"))) {
     views.login.classList.add("show");
     return;
   }
@@ -106,6 +119,9 @@ window.addEventListener("hashchange", route);
 // Login
 // ---------------------------
 const adminKeyInput = document.getElementById("adminKeyInput");
+const loginEmail = document.getElementById("loginEmail");
+const loginPassword = document.getElementById("loginPassword");
+const btnLoginUser = document.getElementById("btnLoginUser");
 const btnSaveAdminKey = document.getElementById("btnSaveAdminKey");
 const btnGoAdmin = document.getElementById("btnGoAdmin");
 
@@ -120,6 +136,34 @@ btnSaveAdminKey.addEventListener("click", () => {
 btnGoAdmin.addEventListener("click", () => {
   location.hash = "#/admin";
 });
+
+btnLoginUser.addEventListener("click", async () => {
+  const email = (loginEmail.value || "").trim();
+  const password = (loginPassword.value || "").trim();
+
+  if (!email || !password) {
+    showToast("Preencha e-mail e senha.");
+    return;
+  }
+
+  try {
+    const r = await fetch(`${API_BASE}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error || "Falha no login");
+
+    localStorage.setItem("atlas_user_token", data.token);
+    showToast("Login realizado.");
+    location.hash = "#/app";
+  } catch (e) {
+    showToast(e.message);
+  }
+});
+
 
 elBtnLogout.addEventListener("click", () => {
   clearSession();

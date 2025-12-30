@@ -83,7 +83,7 @@ async function autoMigrate() {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       channel TEXT,
       from_phone TEXT,
-      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       text TEXT,
       parsed JSONB,
       reply TEXT,

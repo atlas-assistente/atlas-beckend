@@ -330,15 +330,6 @@ api.get("/dashboard/finance", async (req, res) => {
 });
 
 
-// =======================
-// FRONTEND
-// =======================
-app.use(express.static(__dirname));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
 // Registra a API
 app.use("/api", api);
 
@@ -365,6 +356,15 @@ api.post("/login", async (req, res) => {
   res.json({ token });
 });
 
+
+// =======================
+// FRONTEND
+// =======================
+app.use(express.static(__dirname));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 app.listen(process.env.PORT || 3000);
 

@@ -18,6 +18,27 @@ app.use(express.json());
 console.log("SERVER.JS REAL EXECUTANDO");
 
 
+  async function mustUser(req, res) {
+  const token = (req.headers["x-user-token"] || "").toString();
+
+  if (!token) {
+    res.status(401).json({ error: "Sem login" });
+    return null;
+  }
+
+  const r = await pool.query(
+    "SELECT user_id FROM sessions WHERE token=$1 AND expires_at > now()",
+    [token]
+  );
+
+  if (!r.rows.length) {
+    res.status(401).json({ error: "Login inválido" });
+    return null;
+  }
+
+  return r.rows[0].user_id;
+}
+
 // =======================
 // ADMIN AUTH
 // =======================
@@ -221,18 +242,12 @@ api.delete("/admin/users/:id", async (req, res) => {
 
 // SIMULADOR WHATSAPP
 api.post("/simulator/whatsapp", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
+  const userId = await mustUser(req, res);
+  if (!userId) return;
 
   const { from, message } = req.body;
   const parsed = parseMessage(message || "");
   const reply = `Entendido: ${parsed?.tipo || "unknown"}`;
-
-  const u = await pool.query(
-    "SELECT user_id FROM whatsapp_numbers WHERE phone = $1",
-    [from || ""]
-  );
-
-const userId = u.rows[0]?.user_id || null;
 
   await pool.query(
     `INSERT INTO messages (channel,from_phone,user_id,text,parsed,reply)
@@ -240,9 +255,9 @@ const userId = u.rows[0]?.user_id || null;
     [from || "", userId, message || "", JSON.stringify(parsed || {}), reply]
   );
 
-
   res.json({ reply, parsed });
 });
+
 
 // Registra a API
 app.use("/api", api);
@@ -287,30 +302,34 @@ app.listen(process.env.PORT || 3000);
 // =======================
 
 api.get("/dashboard/agenda", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
+  const userId = await mustUser(req, res);
+  if (!userId) return;
+
 
   const r = await pool.query(`
     SELECT id, from_phone, parsed, text, criado_em
     FROM messages
-    WHERE user_id IS NOT NULL
+    WHERE user_id = $1
     AND parsed->>'tipo' IN ('expense','income','event')
     ORDER BY criado_em DESC
     LIMIT 50
-  `);
+  `,[userId]);
 
   res.json({ items: r.rows });
 });
 
 api.get("/dashboard/finance", async (req, res) => {
-  if (!mustAdmin(req, res)) return;
+  const userId = await mustUser(req, res);
+  if (!userId) return;
+
 
   const r = await pool.query(`
     SELECT
       SUM(CASE WHEN parsed->>'tipo' = 'income' THEN (parsed->>'valor')::numeric ELSE 0 END) AS income,
       SUM(CASE WHEN parsed->>'tipo' = 'expense' THEN (parsed->>'valor')::numeric ELSE 0 END) AS expense
     FROM messages
-    WHERE user_id IS NOT NULL
-  `);
+    WHERE user_id = $1
+  `,[userId]);
 
   res.json(r.rows[0]);
 });

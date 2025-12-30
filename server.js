@@ -58,9 +58,12 @@ function mustAdmin(req, res) {
 // AUTO MIGRATE
 // =======================
 async function autoMigrate() {
-  await pool.query(`
-    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+  // 1. Extensão
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
+
+  // 2. Tabela users
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       password_hash TEXT,
@@ -70,7 +73,25 @@ async function autoMigrate() {
       status TEXT DEFAULT 'active',
       criado_em TIMESTAMP DEFAULT now()
     );
+  `);
 
+  // 3. Remove FK antiga (se existir)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_name = 'whatsapp_numbers_user_id_fkey'
+      ) THEN
+        ALTER TABLE whatsapp_numbers
+        DROP CONSTRAINT whatsapp_numbers_user_id_fkey;
+      END IF;
+    END$$;
+  `);
+
+  // 4. Tabela whatsapp_numbers com CASCADE
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS whatsapp_numbers (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -78,7 +99,10 @@ async function autoMigrate() {
       verificado BOOLEAN DEFAULT false,
       criado_em TIMESTAMP DEFAULT now()
     );
+  `);
 
+  // 5. Messages
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       channel TEXT,
@@ -89,8 +113,10 @@ async function autoMigrate() {
       reply TEXT,
       criado_em TIMESTAMP DEFAULT now()
     );
+  `);
 
-
+  // 6. login_codes
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS login_codes (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -98,7 +124,10 @@ async function autoMigrate() {
       expires_at TIMESTAMP,
       used BOOLEAN DEFAULT false
     );
+  `);
 
+  // 7. sessions
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -110,6 +139,7 @@ async function autoMigrate() {
 
   console.log("Atlas DB OK");
 }
+
 
 
 await autoMigrate();

@@ -29,6 +29,8 @@ function mustAdmin(req, res) {
   return true;
 }
 
+
+
 // =======================
 // AUTO MIGRATE
 // =======================
@@ -38,6 +40,7 @@ async function autoMigrate() {
 
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      password_hash TEXT
       email TEXT UNIQUE NOT NULL,
       nome TEXT,
       plano TEXT DEFAULT 'FREE',

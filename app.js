@@ -279,6 +279,7 @@ btnSaveUser.addEventListener("click", async () => {
   const id = editUserId.value.trim() || null;
   const payload = {
     email: userEmail.value.trim(),
+    password: campoSenha
     nome: userNome.value.trim(),
     plano: userPlano.value.trim(),
     status: userStatus.value.trim(),

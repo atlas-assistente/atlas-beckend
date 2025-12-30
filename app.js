@@ -211,13 +211,14 @@ btnClearForm.addEventListener("click", () => {
   showToast("Limpo.");
 });
 
-function adminHeaders() {
-  const k = getAdminKey();
+function authHeaders() {
   return {
     "Content-Type": "application/json",
-    "X-ADMIN-KEY": k
+    "X-ADMIN-KEY": localStorage.getItem("atlas_admin_key") || "",
+    "X-USER-TOKEN": localStorage.getItem("atlas_user_token") || ""
   };
 }
+
 
 function badgeForStatus(st) {
   const s = (st || "").toLowerCase();
@@ -238,7 +239,7 @@ function escapeHtml(str) {
 async function loadUsers() {
   usersTbody.innerHTML = `<tr><td colspan="6" class="atlas-td-muted">Carregando…</td></tr>`;
   try {
-    const r = await fetch(`${API_BASE}/admin/users`, { headers: adminHeaders() });
+    const r = await fetch(`${API_BASE}/admin/users`, { headers: authHeaders() });
     const data = await r.json();
     if (!r.ok) throw new Error(data?.error || "Falha ao carregar usuários.");
 
@@ -305,7 +306,7 @@ usersTbody.addEventListener("click", async (e) => {
 
 async function fillUserForm(id) {
   try {
-    const r = await fetch(`${API_BASE}/admin/users/${id}`, { headers: adminHeaders() });
+    const r = await fetch(`${API_BASE}/admin/users/${id}`, { headers: authHeaders() });
     const data = await r.json();
     if (!r.ok) throw new Error(data?.error || "Falha ao carregar usuário.");
 
@@ -352,7 +353,7 @@ btnSaveUser.addEventListener("click", async () => {
 async function createUser(payload) {
   const r = await fetch(`${API_BASE}/admin/users`, {
     method: "POST",
-    headers: adminHeaders(),
+    headers: authHeaders(),
     body: JSON.stringify(payload)
   });
   const data = await r.json();
@@ -362,7 +363,7 @@ async function createUser(payload) {
 async function updateUser(id, payload) {
   const r = await fetch(`${API_BASE}/admin/users/${id}`, {
     method: "PUT",
-    headers: adminHeaders(),
+    headers: authHeaders(),
     body: JSON.stringify(payload)
   });
   const data = await r.json();
@@ -372,7 +373,7 @@ async function updateUser(id, payload) {
 async function deleteUser(id) {
   const r = await fetch(`${API_BASE}/admin/users/${id}`, {
     method: "DELETE",
-    headers: adminHeaders()
+    headers: authHeaders()
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error || "Falha ao excluir usuário.");
@@ -416,7 +417,7 @@ async function sendChat() {
   try {
     const r = await fetch(`${API_BASE}/simulator/whatsapp`, {
       method: "POST",
-      headers: adminHeaders(),
+      headers: authHeaders(),
       body: JSON.stringify({ from, message })
     });
     const data = await r.json();
@@ -432,11 +433,11 @@ async function sendChat() {
 async function loadDashboard() {
   try {
     const agenda = await fetch(`${API_BASE}/dashboard/agenda`, {
-      headers: adminHeaders()
+      headers: authHeaders()
     }).then(r => r.json());
 
     const finance = await fetch(`${API_BASE}/dashboard/finance`, {
-      headers: adminHeaders()
+      headers: authHeaders()
     }).then(r => r.json());
 
     const agendaBox = document.querySelector("#agendaBox");

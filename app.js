@@ -136,6 +136,7 @@ const btnOpenCreateUser = document.getElementById("btnOpenCreateUser");
 
 const editUserId = document.getElementById("editUserId");
 const userEmail = document.getElementById("userEmail");
+const userPassword = document.getElementById("userPassword");
 const userNome = document.getElementById("userNome");
 const userPlano = document.getElementById("userPlano");
 const userStatus = document.getElementById("userStatus");
@@ -162,6 +163,7 @@ btnClearForm.addEventListener("click", () => {
   userPlano.value = "FREE";
   userStatus.value = "active";
   userPhone.value = "";
+  userPassword.value = "";
   showToast("Limpo.");
 });
 
@@ -279,12 +281,13 @@ btnSaveUser.addEventListener("click", async () => {
   const id = editUserId.value.trim() || null;
   const payload = {
     email: userEmail.value.trim(),
-    password: campoSenha
+    password: userPassword.value.trim(),
     nome: userNome.value.trim(),
     plano: userPlano.value.trim(),
     status: userStatus.value.trim(),
     phone: userPhone.value.trim()
   };
+
 
   if (!payload.email) return showToast("E-mail é obrigatório.");
 

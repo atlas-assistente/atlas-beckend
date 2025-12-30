@@ -5,6 +5,8 @@ import { parseMessage } from "./parser.js";
 import { startScheduler } from "./scheduler.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,7 +42,7 @@ async function autoMigrate() {
 
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      password_hash TEXT
+      password_hash TEXT,
       email TEXT UNIQUE NOT NULL,
       nome TEXT,
       plano TEXT DEFAULT 'FREE',
@@ -118,16 +120,22 @@ api.get("/admin/users", async (req, res) => {
 api.post("/admin/users", async (req, res) => {
   if (!mustAdmin(req, res)) return;
 
-  const { email, nome, plano, status, phone } = req.body;
+  const { email, nome, plano, status, phone, password } = req.body;
   if (!email) return res.status(400).json({ error: "email obrigatório" });
 
+  let passwordHash = null;
+  if (password) {
+  passwordHash = await bcrypt.hash(password, 10);
+  }
+
+
   const up = await pool.query(
-    `INSERT INTO users (email,nome,plano,status)
-     VALUES ($1,$2,$3,$4)
+    `INSERT INTO users (email,nome,plano,status,password_hash)
+     VALUES ($1,$2,$3,$4,$5)
      ON CONFLICT (email)
      DO UPDATE SET nome=$2, plano=$3, status=$4
      RETURNING id,email,nome,plano,status`,
-    [email.toLowerCase(), nome || null, plano || "FREE", status || "active"]
+    [email.toLowerCase(), nome || null, plano || "FREE", status || "active", passwordHash]
   );
 
   const user = up.rows[0];
@@ -247,6 +255,30 @@ app.use(express.static(__dirname));
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
+
+api.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  const r = await pool.query(
+    "SELECT id, password_hash FROM users WHERE email=$1",
+    [email.toLowerCase()]
+  );
+
+  if (!r.rows.length) return res.status(401).json({ error: "Credenciais inválidas" });
+
+  const ok = await bcrypt.compare(password, r.rows[0].password_hash);
+  if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
+
+  const token = crypto.randomUUID();
+
+  await pool.query(
+    "INSERT INTO sessions (user_id, token, expires_at) VALUES ($1,$2, now() + interval '7 days')",
+    [r.rows[0].id, token]
+  );
+
+  res.json({ token });
+});
+
 
 app.listen(process.env.PORT || 3000);
 

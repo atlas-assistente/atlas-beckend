@@ -32,6 +32,9 @@ function showToast(msg) {
 
 elApiHostText.textContent = API_BASE;
 
+console.log("Teste API:", API_BASE);
+fetch(API_BASE + "/health").then(r => console.log("Status code:", r.status, "OK:", r.ok)).catch(e => console.log("Erro fetch:", e));
+
 function getAdminKey() {
   return localStorage.getItem("atlas_admin_key") || "";
 }

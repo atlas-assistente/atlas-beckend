@@ -2,7 +2,7 @@
 // ATLAS FRONTEND (SPA)
 // ===========================
 
-const API_BASE = "https://atlas-backend.onrender.com/api";
+const API_BASE = "https://atlas-beckend.onrender.com/api";
 
 
 const elApiHostText = document.getElementById("apiHostText");
